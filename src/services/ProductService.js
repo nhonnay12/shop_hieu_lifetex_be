@@ -1,9 +1,9 @@
 const Product = require('../models/ProductModel');
 const bcrypt = require('bcrypt');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+require('dotenv').config();
 
-const apiKey = 'AIzaSyDYhrS5mbe2jxA4Izgi3dBPDBlOZswKnEc';
-const genAI = new GoogleGenerativeAI(apiKey);
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const model = genAI.getGenerativeModel({
     model: 'gemini-1.5-flash',

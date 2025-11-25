@@ -1,15 +1,17 @@
 const Story = require('../models/StoryRoutes');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-// In Node.js environments, the `fetch` API is not available globally by default before v18.
-// The @google/generative-ai SDK uses `fetch` internally.
-// We need to polyfill it. We can use `node-fetch`.
-if (typeof fetch === 'undefined') {
-    global.fetch = require('node-fetch');
+// In Node.js environments before v18, the `fetch` API is not available globally.
+// The @google/generative-ai SDK uses `fetch` and its related classes like `Headers`.
+// We need to polyfill them using `node-fetch`.
+if (typeof fetch === 'undefined' && typeof global.fetch === 'undefined') {
+    const fetch = require('node-fetch');
+    global.fetch = fetch;
+    global.Headers = fetch.Headers;
 }
 require('dotenv').config();
 
-const apiKey = 'AIzaSyAsIQkrlOijiVY5V8KGNeRghaVhBqFjrto';
-const genAI = new GoogleGenerativeAI(apiKey);
+// Lấy API key từ biến môi trường để bảo mật
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const model = genAI.getGenerativeModel({
     model: 'gemini-2.0-flash-001',
@@ -23,7 +25,21 @@ const generationConfig = {
     responseMimeType: 'text/plain',
 };
 const createStory = async (req, res) => {
-    const { name, content, age, image, price, discount, author, description, sold, rating, pricesale, type } = req.body;
+    const {
+        name,
+        content,
+        age,
+        image,
+        price,
+        discount,
+        author,
+        description,
+        sold,
+        rating,
+        pricesale,
+        type,
+        countInStock,
+    } = req.body;
 
     const requiredFields = [
         { field: 'name', value: name },
@@ -38,6 +54,7 @@ const createStory = async (req, res) => {
         { field: 'rating', value: rating },
         { field: 'pricesale', value: pricesale },
         { field: 'type', value: type },
+        { field: 'countInStock', value: countInStock },
     ];
 
     // Check for missing required fields and build a message
@@ -104,6 +121,7 @@ const createStory = async (req, res) => {
             rating,
             type,
             pricesale,
+            countInStock,
         };
 
         // Create a new Story document
@@ -213,7 +231,8 @@ const deleteStory = async (req, res) => {
 };
 
 const updateStory = async (req, res) => {
-    const { name, content, age, image, price, discount, author, sold, rating, pricesale, type } = req.body;
+    const { name, content, age, image, price, discount, author, sold, rating, pricesale, type, countInStock } =
+        req.body;
 
     try {
         const story = await Story.findById(req.params.id);
@@ -275,6 +294,7 @@ const updateStory = async (req, res) => {
         story.sold = sold;
         story.rating = rating;
         story.pricesale = pricesale;
+        story.countInStock = countInStock;
 
         await story.save();
 
