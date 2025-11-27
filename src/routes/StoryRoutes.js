@@ -7,6 +7,7 @@ const {
     deleteStory,
     updateStory,
     hotNews,
+    updateMultipleStories,
 } = require('../controllers/storyController');
 
 // POST: Tạo câu chuyện
@@ -20,6 +21,9 @@ router.get('/stories/:id', getStoryById);
 
 // Xóa câu chuyện theo ID
 router.delete('/stories/:id', deleteStory);
+
+// Cập nhật nhiều câu chuyện (hàng loạt)
+router.put('/stories/bulk-update', updateMultipleStories);
 
 // Cập nhật câu chuyện theo ID
 router.put('/stories/:id', updateStory);

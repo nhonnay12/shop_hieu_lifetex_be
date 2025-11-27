@@ -281,6 +281,24 @@ const updateStory = async (req, res) => {
             parsedDescription = { summary: responseText }; // fallback
         }
 
+        // ✅ Xử lý cập nhật countInStock
+        if (countInStock !== undefined) {
+            const amountToChange = Number(countInStock);
+            if (isNaN(amountToChange)) {
+                return res.status(400).json({ error: 'Số lượng tồn kho không hợp lệ.' });
+            }
+
+            const newStock = story.countInStock + amountToChange;
+
+            if (newStock < 0) {
+                return res
+                    .status(400)
+                    .json({ error: `Không thể xuất kho. Số lượng tồn kho không đủ (hiện có: ${story.countInStock}).` });
+            }
+
+            story.countInStock = newStock;
+        }
+
         // ✅ Cập nhật câu chuyện
         story.age = ageValue;
         story.type = type;
@@ -294,7 +312,6 @@ const updateStory = async (req, res) => {
         story.sold = sold;
         story.rating = rating;
         story.pricesale = pricesale;
-        story.countInStock = countInStock;
 
         await story.save();
 
@@ -332,4 +349,56 @@ const hotNews = async (req, res) => {
     }
 };
 
-module.exports = { createStory, getAllStories, getStoryById, deleteStory, updateStory, hotNews };
+const updateMultipleStories = async (req, res) => {
+    const { stories } = req.body; // Mong đợi một mảng dạng [{ id, countInStock }]
+
+    if (!Array.isArray(stories) || stories.length === 0) {
+        return res.status(400).json({ error: 'Request body phải là một mảng các story cần cập nhật.' });
+    }
+
+    const results = [];
+
+    for (const storyUpdate of stories) {
+        const { id, countInStock } = storyUpdate;
+
+        if (!id || countInStock === undefined) {
+            results.push({ id, status: 'ERR', message: 'Mỗi story phải có id và countInStock.' });
+            continue; // Bỏ qua và xử lý item tiếp theo
+        }
+
+        const amountToChange = Number(countInStock);
+        if (isNaN(amountToChange)) {
+            results.push({ id, status: 'ERR', message: 'countInStock phải là một số.' });
+            continue;
+        }
+
+        try {
+            const story = await Story.findById(id);
+            if (!story) {
+                results.push({ id, status: 'ERR', message: 'Câu chuyện không tồn tại.' });
+                continue;
+            }
+
+            const newStock = story.countInStock + amountToChange;
+
+            if (newStock < 0) {
+                results.push({
+                    id,
+                    status: 'ERR',
+                    message: `Không thể xuất kho. Số lượng tồn kho không đủ (hiện có: ${story.countInStock}).`,
+                });
+                continue;
+            }
+
+            story.countInStock = newStock;
+            await story.save();
+            results.push({ id, status: 'OK', message: 'Cập nhật thành công.' });
+        } catch (error) {
+            results.push({ id, status: 'ERR', message: `Lỗi hệ thống: ${error.message}` });
+        }
+    }
+
+    res.status(200).json({ message: 'Hoàn tất cập nhật hàng loạt.', results });
+};
+
+module.exports = { createStory, getAllStories, getStoryById, deleteStory, updateStory, hotNews, updateMultipleStories };

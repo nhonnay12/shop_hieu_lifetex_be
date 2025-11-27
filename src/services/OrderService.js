@@ -1,12 +1,32 @@
 const Order = require('../models/OrderModel');
-const Story = require('../models/StoryRoutes');
 const EmailService = require('./EmailService');
-const Product = require('../models/ProductModel');
+const Story = require('../models/StoryRoutes'); // Thay Product bằng Story
 
 const createOrder = async (newOrder) => {
     try {
+        // Lặp qua từng sản phẩm trong đơn hàng để cập nhật số lượng
+        for (const item of newOrder.orderItems) {
+            const product = await Story.findById(item.story); // 'story' được dùng như product id
+            if (!product) {
+                return {
+                    status: 'ERR',
+                    message: `Sản phẩm với ID ${item.story} không tồn tại.`,
+                };
+            }
+            if (product.countInStock < item.amount) {
+                return {
+                    status: 'ERR',
+                    message: `Sản phẩm ${product.name} không đủ hàng.`,
+                };
+            }
+            // Cập nhật countInStock và sold
+            product.countInStock -= item.amount;
+            product.sold = (product.sold || 0) + item.amount;
+            await product.save();
+        }
+
         // Tạo đối tượng đơn hàng mới từ dữ liệu đầu vào
-         const isPaid = newOrder.paymentMethod === 'paypal';
+        const isPaid = newOrder.paymentMethod === 'paypal';
         const order = new Order({
             orderItems: newOrder.orderItems || [],
             shippingAddress: {
@@ -106,7 +126,7 @@ const cancelOrderDetail = (orderId, data) => {
                 const productData = await Product.findOneAndUpdate(
                     {
                         _id: order.product,
-                        countInStock: { $gte: 0 } // Ensure we don't go negative
+                        countInStock: { $gte: 0 }, // Ensure we don't go negative
                     },
                     {
                         $inc: {
@@ -127,12 +147,15 @@ const cancelOrderDetail = (orderId, data) => {
             });
 
             const results = await Promise.all(promises);
-            const errorResult = results.find(res => res.status === 'ERR');
+            const errorResult = results.find((res) => res.status === 'ERR');
 
             if (errorResult) {
                 // Optional: Rollback previous stock updates if one fails.
                 // For now, we just report the error.
-                return resolve({ status: 'ERR', message: `Product with id: ${errorResult.id} not found or stock issue.` });
+                return resolve({
+                    status: 'ERR',
+                    message: `Product with id: ${errorResult.id} not found or stock issue.`,
+                });
             }
 
             const deletedOrder = await Order.findByIdAndDelete(orderId);
