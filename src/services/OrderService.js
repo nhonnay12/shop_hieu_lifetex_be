@@ -110,59 +110,51 @@ const getOrderDetail = (id) => {
         }
     });
 };
-const cancelOrderDetail = (orderId, data) => {
+const cancelOrderDetail = (orderId) => {
     return new Promise(async (resolve, reject) => {
         try {
             const order = await Order.findById(orderId);
             if (!order) {
-                resolve({
+                return resolve({
                     status: 'ERR',
                     message: 'The order is not defined',
                 });
-                return;
             }
 
-            const promises = data.map(async (order) => {
-                const productData = await Product.findOneAndUpdate(
+            // Restore stock for each item in the order
+            const promises = order.orderItems.map(async (item) => {
+                const productData = await Story.findOneAndUpdate(
                     {
-                        _id: order.product,
-                        countInStock: { $gte: 0 }, // Ensure we don't go negative
+                        _id: item.story, // Use 'story' which acts as product id
                     },
                     {
                         $inc: {
-                            countInStock: +order.amount,
-                            sold: -order.amount,
+                            countInStock: +item.amount,
+                            sold: -item.amount,
                         },
                     },
                     { new: true },
                 );
+
                 if (!productData) {
-                    return {
-                        status: 'ERR',
-                        message: 'ERR',
-                        id: order.product,
-                    };
+                    // Throw an error to stop Promise.all
+                    throw new Error(`Product with id: ${item.story} not found or stock issue.`);
                 }
-                return { status: 'OK' };
             });
 
-            const results = await Promise.all(promises);
-            const errorResult = results.find((res) => res.status === 'ERR');
+            await Promise.all(promises);
 
-            if (errorResult) {
-                // Optional: Rollback previous stock updates if one fails.
-                // For now, we just report the error.
+            const deletedOrder = await Order.findByIdAndDelete(orderId);
+            if (!deletedOrder) {
                 return resolve({
                     status: 'ERR',
-                    message: `Product with id: ${errorResult.id} not found or stock issue.`,
+                    message: 'Failed to delete the order after restoring stock.',
                 });
             }
 
-            const deletedOrder = await Order.findByIdAndDelete(orderId);
-
             resolve({
                 status: 'OK',
-                message: 'success',
+                message: 'Order canceled and stock restored successfully',
                 data: deletedOrder,
             });
         } catch (e) {

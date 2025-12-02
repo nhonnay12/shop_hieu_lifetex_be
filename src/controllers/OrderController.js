@@ -1,3 +1,4 @@
+const Order = require('../models/OrderModel');
 const OrderService = require('../services/OrderService');
 
 const createOrder = async (req, res) => {
@@ -67,18 +68,17 @@ const cancelOrderDetail = async (req, res) => {
     try {
         const orderId = req.params.id; // lấy id từ URL
         if (!orderId) {
-            return res.status(400).json({ status: 'ERR', message: 'orderId is required' });
+            return res.status(200).json({
+                status: 'ERR',
+                message: 'The orderId is required',
+            });
         }
-
-        const deletedOrder = await Order.findByIdAndDelete(orderId);
-        if (!deletedOrder) {
-            return res.status(404).json({ status: 'ERR', message: 'Order not found' });
-        }
-
-        return res.status(200).json({ status: 'OK', message: 'Order deleted successfully', data: deletedOrder });
+        const response = await OrderService.cancelOrderDetail(orderId);
+        return res.status(200).json(response);
     } catch (e) {
-        console.error(e);
-        return res.status(500).json({ status: 'ERR', message: e.message });
+        return res.status(404).json({
+            message: e,
+        });
     }
 };
 
