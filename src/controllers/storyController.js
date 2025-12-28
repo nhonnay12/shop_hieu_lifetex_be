@@ -14,14 +14,14 @@ require('dotenv').config();
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const model = genAI.getGenerativeModel({
-    model: 'gemini-2.0-flash-001',
+    model: 'gemini-2.5-flash',
 });
 
 const generationConfig = {
     temperature: 1,
     topP: 0.95,
     topK: 40,
-    maxOutputTokens: 8192,
+    maxOutputTokens: 4096,
     responseMimeType: 'text/plain',
 };
 const createStory = async (req, res) => {
@@ -77,7 +77,7 @@ const createStory = async (req, res) => {
 
     const userInputText = `
         Tạo câu chuyện từ ${ageValue} tuổi, câu chuyện ${name},
-        Nội dung câu chuyện về ${content} với ${type}. Hãy cung cấp 40 chương, mỗi chương khoảng 100 từ . Tất cả yêu cầu cần ở định dạng JSON.
+        Nội dung câu chuyện về ${content} với ${type}. Hãy cung cấp 5 chương, mỗi chương khoảng 30 từ . Tất cả yêu cầu cần ở định dạng JSON.
     `;
     //kèm theo mô tả chi tiết cho hình ảnh tương ứng với từng chương, và lời nhắc tạo hình ảnh cho bìa sách với tên câu chuyện.
     try {
@@ -268,6 +268,7 @@ const updateStory = async (req, res) => {
         });
 
         const result = await chatSession.sendMessage(userInputText);
+        console.log(result.response.text(), 'log');
         let responseText = result.response.text();
 
         // ✅ Làm sạch output AI
