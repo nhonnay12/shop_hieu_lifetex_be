@@ -8,6 +8,7 @@ const {
     updateStory,
     hotNews,
     updateMultipleStories,
+    getStoriesByIds,
 } = require('../controllers/storyController');
 
 // POST: Tạo câu chuyện
@@ -30,5 +31,8 @@ router.put('/stories/:id', updateStory);
 
 // lấy hot news
 router.get('/hotnews', hotNews);
+
+// Lấy danh sách story theo IDs
+router.post('/get-by-ids', getStoriesByIds);
 
 module.exports = router;

@@ -14,14 +14,14 @@ require('dotenv').config();
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
+    model: 'gemini-2.0-flash-001',
 });
 
 const generationConfig = {
     temperature: 1,
     topP: 0.95,
     topK: 40,
-    maxOutputTokens: 4096,
+    maxOutputTokens: 8192,
     responseMimeType: 'text/plain',
 };
 const createStory = async (req, res) => {
@@ -77,7 +77,7 @@ const createStory = async (req, res) => {
 
     const userInputText = `
         Tạo câu chuyện từ ${ageValue} tuổi, câu chuyện ${name},
-        Nội dung câu chuyện về ${content} với ${type}. Hãy cung cấp 5 chương, mỗi chương khoảng 30 từ . Tất cả yêu cầu cần ở định dạng JSON.
+        Nội dung câu chuyện về ${content} với ${type}. Hãy cung cấp 40 chương, mỗi chương khoảng 100 từ . Tất cả yêu cầu cần ở định dạng JSON.
     `;
     //kèm theo mô tả chi tiết cho hình ảnh tương ứng với từng chương, và lời nhắc tạo hình ảnh cho bìa sách với tên câu chuyện.
     try {
@@ -268,7 +268,6 @@ const updateStory = async (req, res) => {
         });
 
         const result = await chatSession.sendMessage(userInputText);
-        console.log(result.response.text(), 'log');
         let responseText = result.response.text();
 
         // ✅ Làm sạch output AI
@@ -402,4 +401,40 @@ const updateMultipleStories = async (req, res) => {
     res.status(200).json({ message: 'Hoàn tất cập nhật hàng loạt.', results });
 };
 
-module.exports = { createStory, getAllStories, getStoryById, deleteStory, updateStory, hotNews, updateMultipleStories };
+const getStoriesByIds = async (req, res) => {
+    try {
+        const storyIds = req.body.ids;
+        if (!storyIds || !Array.isArray(storyIds)) {
+            return res.status(400).json({
+                status: 'ERR',
+                message: 'Invalid input: "ids" must be an array.',
+            });
+        }
+
+        // Dùng $in để tìm tất cả các document có _id nằm trong mảng storyIds
+        const stories = await Story.find({
+            _id: { $in: storyIds },
+        });
+
+        return res.status(200).json({
+            status: 'OK',
+            message: 'SUCCESS',
+            data: stories,
+        });
+    } catch (e) {
+        return res.status(500).json({
+            message: e.message,
+        });
+    }
+};
+
+module.exports = {
+    createStory,
+    getAllStories,
+    getStoryById,
+    deleteStory,
+    updateStory,
+    hotNews,
+    updateMultipleStories,
+    getStoriesByIds,
+};
